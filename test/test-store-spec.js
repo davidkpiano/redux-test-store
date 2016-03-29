@@ -15,6 +15,16 @@ const userReducer = (state = initialUser, action) => {
         ...state,
         test: 'foo'
       };
+    case 'BAR':
+      return {
+        ...state,
+        test: 'bar'
+      };
+    case 'BAZ':
+      return {
+        ...state,
+        test: 'baz'
+      };
     default:
       return state;
   }
@@ -26,15 +36,60 @@ const store = applyMiddleware(thunk)(createStore)(combineReducers({
 
 describe('store testing', () => {
   it('should test stores', (done) => {
-    const _store = testStore(store);
+    const _store = testStore(store, done);
 
     _store.when('FOO', (state, action) => {
-      assert.equal(state.user.test, 'foo');
-      done();
+      return assert.equal(state.user.test, 'foo');
+      // done();
     });
 
     _store.dispatch({
       type: 'FOO'
     });
-  })
-})
+  });
+
+  it('should work with thunks', (done) => {
+    const _store = testStore(store, done);
+
+    _store.when('FOO', (state) => {
+      assert.equal(state.user.test, 'foo');
+    });
+
+    _store.when('BAR', (state) => {
+      assert.equal(state.user.test, 'bar');
+    });
+
+    const thunk = (dispatch) => {
+      dispatch({ type: 'FOO' });
+      dispatch({ type: 'BAR' });
+    };
+
+    _store.dispatch(thunk);
+  });
+
+  it('should work with deep thunks', (done) => {
+    const _store = testStore(store, done);
+
+    _store.when('FOO', (state) => {
+      assert.equal(state.user.test, 'foo');
+    });
+
+    _store.when('BAR', (state) => {
+      assert.equal(state.user.test, 'bar');
+    });
+
+    _store.when('BAZ', (state) => {
+      assert.equal(state.user.test, 'baz');
+    });
+
+    const thunk = (dispatch) => {
+      dispatch({ type: 'FOO' });
+      dispatch({ type: 'BAR' });
+      dispatch((_dispatch) => {
+        _dispatch({ type: 'BAZ' });
+      });
+    };
+
+    _store.dispatch(thunk);
+  });
+});

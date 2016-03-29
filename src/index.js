@@ -1,11 +1,11 @@
 import { applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
 import once from 'lodash/once';
+import every from 'lodash/every';
 
 export default function testStore(store, callback = () => {}) {
-  const queuedActions = [];
   const actions = [];
-  const done = once(callback);
+  const finalCallback = once(callback);
 
   function testMiddleware({ dispatch, getState }) {
     return next => action => {
@@ -18,10 +18,13 @@ export default function testStore(store, callback = () => {}) {
   }
 
   const newStore = applyMiddleware(thunk, testMiddleware)(() => store)();
+
+  newStore.queuedActions = [];
   
   newStore.when = (actionType, assertion = () => {}) => {
-    queuedActions.push({
+    newStore.queuedActions.push({
       type: actionType,
+      tested: false,
       assertion
     });
 
@@ -29,23 +32,22 @@ export default function testStore(store, callback = () => {}) {
   }
 
   newStore.subscribe(() => {
-    if (!queuedActions.length) return done();
-    if (!actions.length) return;
-
     const state = newStore.getState();
     const lastAction = actions[actions.length - 1];
-    let assertion;
 
-    if (lastAction.type === queuedActions[0].type) {
-      assertion = queuedActions[0].assertion;
+    newStore.queuedActions.forEach((action, index) => {
+      if ((action.type !== lastAction.type)
+        || action.tested) return action;
 
-      setTimeout(() => {
-        assertion(state, lastAction, actions);
+      const assertion = action.assertion;
 
-        if (!queuedActions.length) return done();
-      });
+      const result = assertion(state, lastAction, actions);
 
-      queuedActions.splice(0, 1);
+      newStore.queuedActions[index].tested = true;
+    });
+
+    if (every(newStore.queuedActions, { tested: true })) {
+      return finalCallback();
     }
   });
 
