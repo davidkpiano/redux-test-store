@@ -17,7 +17,9 @@ export default function testStore(store, callback = () => {}) {
     }
   }
 
-  const newStore = applyMiddleware(thunk, testMiddleware)(() => store)();
+  const clonedStore = {...store};
+
+  const newStore = applyMiddleware(thunk, testMiddleware)(() => clonedStore)();
 
   newStore.queuedActions = [];
   
