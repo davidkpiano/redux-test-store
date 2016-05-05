@@ -3,8 +3,18 @@ import thunk from 'redux-thunk';
 import once from 'lodash/once';
 import every from 'lodash/every';
 import cloneDeep from 'lodash/cloneDeep';
+import identity from 'lodash/identity';
 
-export default function testStore(store, callback = () => {}) {
+function getActions(action) {
+  // Check if batch action
+  if (action && action.actions) {
+    return action.actions;
+  }
+
+  return action;
+}
+
+export default function testStore(store, callback = identity) {
   const actions = [];
   const finalCallback = once(callback);
 
@@ -19,7 +29,7 @@ export default function testStore(store, callback = () => {}) {
   }
 
   const clonedStore = cloneDeep(store);
-  
+
   const newStore = applyMiddleware(thunk, testMiddleware)(() => clonedStore)();
 
   newStore.queuedActions = [];
@@ -36,17 +46,21 @@ export default function testStore(store, callback = () => {}) {
 
   newStore.subscribe(() => {
     const state = newStore.getState();
-    const lastAction = actions[actions.length - 1];
+    let lastActions = [].concat(getActions(actions[actions.length - 1]));
 
-    newStore.queuedActions.forEach((action, index) => {
-      if ((action.type !== lastAction.type)
-        || action.tested) return action;
+    lastActions = [].concat(lastActions);
 
-      const assertion = action.assertion;
+    lastActions.forEach((lastAction) => {    
+      newStore.queuedActions.forEach((action, index) => {
+        if ((action.type !== lastAction.type)
+          || action.tested) return action;
 
-      const result = assertion(state, lastAction, actions);
+        const assertion = action.assertion;
 
-      newStore.queuedActions[index].tested = true;
+        const result = assertion(state, lastAction, actions);
+
+        newStore.queuedActions[index].tested = true;
+      });
     });
 
     if (every(newStore.queuedActions, { tested: true })) {

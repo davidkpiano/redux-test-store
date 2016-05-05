@@ -25,6 +25,13 @@ const userReducer = (state = initialUser, action) => {
         ...state,
         test: 'baz'
       };
+    case 'OTHER':
+      return {
+        ...state,
+        other: 'other',
+      };
+    case 'BATCH':
+      return action.actions.reduce(userReducer, state);
     default:
       return state;
   }
@@ -91,5 +98,22 @@ describe('store testing', () => {
     };
 
     _store.dispatch(thunk);
+  });
+
+  it('should work with batch actions', (done) => {
+    const _store = testStore(store, done);
+
+    _store.when('FOO', (state) => {
+      assert.equal(state.user.test, 'foo');
+    });
+
+    _store.when('OTHER', (state) => {
+      assert.equal(state.user.other, 'other');
+    });
+
+    _store.dispatch({
+      type: 'BATCH',
+      actions: [{ type: 'FOO' }, { type: 'OTHER' }],
+    });
   });
 });
