@@ -2,6 +2,7 @@ import { applyMiddleware } from 'redux';
 import thunk from 'redux-thunk';
 import once from 'lodash/once';
 import every from 'lodash/every';
+import cloneDeep from 'lodash/cloneDeep';
 
 export default function testStore(store, callback = () => {}) {
   const actions = [];
@@ -17,8 +18,8 @@ export default function testStore(store, callback = () => {}) {
     }
   }
 
-  const clonedStore = {...store};
-
+  const clonedStore = cloneDeep(store);
+  
   const newStore = applyMiddleware(thunk, testMiddleware)(() => clonedStore)();
 
   newStore.queuedActions = [];
