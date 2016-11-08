@@ -14,9 +14,8 @@ function getActions(action) {
   return action;
 }
 
-export default function testStore(store, callback = identity) {
+function deepCloneStrategy(store) {
   const actions = [];
-  const finalCallback = once(callback);
 
   function testMiddleware({ dispatch, getState }) {
     return next => action => {
@@ -32,6 +31,17 @@ export default function testStore(store, callback = identity) {
 
   const newStore = applyMiddleware(thunk, testMiddleware)(() => clonedStore)();
 
+  newStore.testStoreActions = actions;
+
+  return newStore;
+}
+
+export default function testStore(store, callback = identity, cloneStore = deepCloneStrategy,
+                                  fetchActions = (store) => store.testStoreActions) {
+  const finalCallback = once(callback);
+
+  const newStore = cloneStore(store);
+
   newStore.queuedActions = [];
   
   newStore.when = (actionType, assertion = () => {}) => {
@@ -46,6 +56,7 @@ export default function testStore(store, callback = identity) {
 
   newStore.subscribe(() => {
     const state = newStore.getState();
+    const actions = fetchActions(newStore);
     let lastActions = [].concat(getActions(actions[actions.length - 1]));
 
     lastActions = [].concat(lastActions);
